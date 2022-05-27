@@ -1,0 +1,505 @@
+import os
+import IPython.display as ipd
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import IPython.display as ipd
+import time
+from collections import Counter, OrderedDict
+import cv2
+from google.colab.patches import cv2_imshow
+import random
+import seaborn as sns
+from pathlib import Path
+import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
+
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.utils import class_weight
+from sklearn.utils.class_weight import compute_class_weight
+ 
+import keras , tensorflow
+from keras.utils.np_utils import to_categorical
+from keras.utils.np_utils import to_categorical
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten, Conv2D, Conv1D, MaxPooling2D, MaxPooling1D, LeakyReLU 
+from tensorflow.keras.optimizers import Adam,SGD,Adagrad,Adadelta,RMSprop,Adamax, Nadam
+from keras.callbacks import ModelCheckpoint
+from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import ReduceLROnPlateau
+from keras.models import load_model
+from keras.models import Input
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg19 import VGG19
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import layers
+from keras.layers import Dense, Flatten, Conv1D, Dropout
+from keras.layers import MaxPooling1D
+from keras.layers.embeddings import Embedding
+from keras.preprocessing import sequence
+from keras.utils.vis_utils import plot_model
+from keras.layers.merge import concatenate
+from keras import *
+from keras.metrics import categorical_accuracy
+
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import preprocess_input
+from keras.preprocessing.image import load_img
+from keras.preprocessing.image import img_to_array
+from keras.models import Model
+from keras import backend as K
+from matplotlib import pyplot
+from numpy import expand_dims
+
+from tqdm import tqdm_notebook as tq
+
+from numba import jit
+
+import warnings
+warnings.filterwarnings("ignore")
+
+import tensorflow as tf
+try:
+    from tensorflow.python.util import module_wrapper as deprecation
+except ImportError:
+    from tensorflow.python.util import deprecation_wrapper as deprecation
+deprecation._PER_MODULE_WARNING_LIMIT = 0
+ 
+from tensorflow.python.util import deprecation
+deprecation._PRINT_DEPRECATION_WARNINGS = False
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+train_dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+folders = sorted(os.listdir(train_dir))
+for i in sorted(folders):
+  print(i, len(os.listdir(os.path.join(train_dir, i))))
+len(folders)
+
+test_dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+folders = sorted(os.listdir(test_dir))
+for i in sorted(folders):
+  print(i, len(os.listdir(os.path.join(test_dir, i))))
+len(folders)
+
+shapes = []
+for folder in folders:
+  print(folder)
+  for img in tq(os.listdir(os.path.join(train_dir, folder))):
+    image = cv2.imread(os.path.join(train_dir, folder, img))
+    shapes.append(image.shape)
+
+Counter(shapes)
+
+dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+
+labels = []
+size = []
+folders = os.listdir(dir)
+folders = sorted(folders)
+
+for folder in folders:
+    labels.append(folder)
+    size.append(len(os.listdir(os.path.join(dir,folder))))
+    
+print(labels)
+print(len(labels))
+print(size)
+print(len(size))
+for i, j in zip(labels, size):
+    print(i,"=",j)
+
+print("equality_rate for covid = ", size[0]/sum(size))
+print("equality_rate for normal = ", size[1]/sum(size))
+plt.figure(figsize = (5,5))
+plt.barh(labels, size, align='center', )
+plt.ylabel('Labels / Class')
+plt.xlabel('Number of images')
+plt.title('Size of Lables')
+plt.show()
+
+os.mkdir('/content/drive/MyDrive/Colab Notebooks/Covid19-dataset-20220421T155747Z-001.zip')
+for i in folders:
+  os.mkdir('/content/drive/MyDrive/Colab Notebooks/Covid19-dataset-20220421T155747Z-001.zip'+i)  
+  
+  data_gen = ImageDataGenerator(                              
+                              rotation_range=10, 
+                              width_shift_range=0.1, 
+                              height_shift_range=0.1, 
+                              brightness_range=[0.2, 1.0],
+                              #zca_whitening=True
+                              horizontal_flip=True, 
+                              vertical_flip=True,
+                              #zoom_range=[0.1, 0.2],
+                              )
+                              
+from keras.preprocessing import image as imglib
+
+folder = 'Covid'
+dir = '/content/drive/MyDrive/Colab Notebooks/Covid19-dataset/train'
+aug_dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+
+for file in tq(os.listdir(os.path.join(dir, folder))):
+  image = imglib.load_img(os.path.join(dir, folder, file), target_size=(224, 224))
+  image = imglib.img_to_array(image)
+  image = image.reshape((1,)+image.shape)
+  i=0
+
+  for batch in data_gen.flow(x=image, batch_size=1, save_to_dir=os.path.join(aug_dir, folder), 
+                                      save_prefix=file+"_aug" , save_format='png'):
+      i += 1
+      if i > 1:#1
+          break
+print(len(os.listdir(os.path.join(aug_dir, folder))))
+
+from keras.preprocessing import image as imglib
+
+folder = 'Normal'
+dir = '/content/drive/MyDrive/Colab Notebooks/Covid19-dataset/train'
+aug_dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+
+for file in tq(os.listdir(os.path.join(dir, folder))):
+  image = imglib.load_img(os.path.join(dir, folder, file), target_size=(224, 224))
+  image = imglib.img_to_array(image)
+  image = image.reshape((1,)+image.shape)
+  i=0
+
+  for batch in data_gen.flow(x=image, batch_size=1, save_to_dir=os.path.join(aug_dir, folder), 
+                                      save_prefix=file+"_aug" , save_format='png'):
+      i += 1
+      if i > 2:#1
+          break
+print(len(os.listdir(os.path.join(aug_dir, folder))))
+
+aug_dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+folders = sorted(os.listdir(aug_dir))
+for i in sorted(folders):
+  print(i, len(os.listdir(os.path.join(aug_dir, i))))
+len(folders)
+
+dir = '/content/drive/MyDrive/Colab Notebooks/aug'
+
+labels = []
+size = []
+folders = os.listdir(dir)
+folders = sorted(folders)
+
+for folder in folders:
+    labels.append(folder)
+    size.append(len(os.listdir(os.path.join(dir,folder))))
+    
+print(labels)
+print(len(labels))
+print(size)
+print(len(size))
+for i, j in zip(labels, size):
+    print(i,"=",j)
+
+print("equality_rate for covid = ", size[0]/sum(size))
+print("equality_rate for normal = ", size[1]/sum(size))
+plt.figure(figsize = (5,5))
+plt.barh(labels, size, align='center', )
+plt.ylabel('Labels / Class')
+plt.xlabel('Number of images')
+plt.title('Size of Lables')
+plt.show()
+
+imgs = []
+labels = []
+shapes = []
+path = '/content/drive/MyDrive/Colab Notebooks/aug'
+
+for folder in os.listdir(path):
+  print(folder.split("/")[-1])
+  lab = folder.split("/")[-1]
+  for files in tq(os.listdir(os.path.join(path, folder))):
+    try:
+      image = cv2.imread(os.path.join(path, folder, files))
+      image = cv2.resize(image, (224, 224))
+      shapes.append(image.shape)
+      labels.append(lab)
+      imgs.append(image)
+    except Exception as e:
+      print(e)
+
+imgs = np.array(imgs)
+labels = np.array(labels)
+Counter(shapes), imgs.shape, labels.shape
+
+#one hot encoding
+le=LabelEncoder()
+y=le.fit_transform(labels)
+y=to_categorical(y,2)
+y.shape
+#labels =['covid', 'normal']
+#lables =[0, 1]
+#lables=[[1,0], [0,1]]
+
+np.unique(labels)
+
+#Normalization
+#0-255 -> 0-1
+imgs = imgs/255
+imgs.shape
+
+#Train test split
+from sklearn.model_selection import train_test_split
+np.random.seed(2)
+x_train,x_test,y_train,y_test=train_test_split(imgs,y,test_size=0.25,)
+print(x_train.shape)
+print(x_test.shape)
+print(y_train.shape)
+print(y_test.shape)
+imgs = y = 0
+
+########################################################
+from tensorflow.keras.applications import VGG16, VGG19
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import layers
+from keras.layers import Dense, Flatten, Conv1D, Dropout
+from keras.layers import MaxPooling1D
+from keras.layers.embeddings import Embedding
+from keras.preprocessing import sequence
+from keras.utils.vis_utils import plot_model
+from keras.layers.merge import concatenate
+from keras import *
+from keras.metrics import categorical_accuracy
+
+
+# Block 1
+from keras import layers
+from keras.layers import Activation, BatchNormalization
+from tensorflow.keras.losses import Huber
+input_img = Input((224, 224, 3))
+x = layers.Conv2D(64, (3, 3),
+                  padding='same',
+                  name='block1_conv1')(input_img)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(64, (3, 3),
+                  padding='same',
+                  name='block1_conv2')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+
+# Block 2
+x = layers.Conv2D(128, (3, 3),
+                  padding='same',
+                  name='block2_conv1')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(128, (3, 3),
+                  padding='same',
+                  name='block2_conv2')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+# Block 3
+x = layers.Conv2D(256, (3, 3),
+                  padding='same',
+                  name='block3_conv1')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(256, (3, 3),
+                  padding='same',
+                  name='block3_conv2')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(256, (3, 3),
+                  padding='same',
+                  name='block3_conv3')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+
+# Block 4
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block4_conv1')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block4_conv2')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block4_conv3')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+
+# Block 5
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block5_conv1')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block5_conv2')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.Conv2D(512, (3, 3),
+                  padding='same',
+                  name='block5_conv3')(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+
+x = layers.MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
+ 
+x = layers.Flatten()(x)
+x = layers.Dense(256, activation='relu')(x)
+x = layers.Dropout(0.5)(x)
+x = layers.Dense(128, activation='relu')(x)
+x = layers.Dropout(0.5)(x)
+x = layers.Dense(2, activation='softmax')(x)
+
+
+
+model = Model(inputs=[input_img], outputs=[x])
+
+model.compile(loss='categorical_crossentropy',optimizer=Adam(0.0001),metrics=['acc'])
+
+model.summary()
+
+#1. y = mx+c
+#2. Activation Function
+
+#x=100 y=200
+#1. y = m(100)+c
+#     = 1(100)+0
+#     = 100
+#error = 200-100 = 100
+#optimizer = m,c
+#y =2(100)+0
+#y=200
+#error = 200-200 = 0
+
+#2. Activation Function(y)
+#relu - 0.1 = 0.1
+#     - -0.234 = 0
+#softmax = [1.394, 4.5930] -> [0.12, 0.98]
+
+#vgg.compile(loss='categorical_crossentropy',optimizer='Adam',metrics=['acc'])
+
+#vgg = load_model("/content/drive/MyDrive/Colab Notebooks/vgg.h5")
+
+start = time.time()
+red_lr= ReduceLROnPlateau(monitor='val_loss',patience=9,verbose=2,factor=0.001,min_delta=0.01)
+filepath = r"/content/drive/MyDrive/Colab Notebooks/vgg.h5"#-{epoch:02d}-{loss:.4f}-{acc:.4f}-{val_loss:.4f}-{val_acc:.4f}.h5"
+check=ModelCheckpoint(filepath = filepath, verbose = 1, save_best_only = False)
+
+History = vgg.fit(x_train, y_train , epochs=30, verbose = 1 ,validation_data=(x_test, y_test), 
+                       callbacks = [check, ], 
+                       batch_size = 32, shuffle=True,
+                       )
+
+print(time.time()-start)
+#avgg- loss: 0.0086 - acc: 0.9988 - val_loss: 0.1111 - val_acc: 0.9634 .h5
+
+for i in os.listdir('/content/drive/MyDrive/covid1'):
+  if('.h5' in i):
+    os.remove('/content/drive/MyDrive/covid1/'+i)
+    
+    plt.plot(History.history['acc'])
+plt.plot(History.history['val_acc'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.savefig(r"/content/drive/MyDrive/covid1/accuracy.png")
+plt.show()
+
+plt.plot(History.history['loss'])
+plt.plot(History.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.savefig(r"/content/drive/MyDrive/covid1/loss.png")
+plt.show()
+
+#m4
+from sklearn import metrics
+arc = load_model(r'/content/drive/MyDrive/covid1/vgg.h5')
+pred = arc.predict(x_test, verbose=1)
+ 
+lab = ['Covid', 'Normal']
+
+y_pred_bool = np.argmax(pred, axis=1)
+y_test1 = np.argmax(y_test, axis=1)
+print(metrics.classification_report(y_test1, y_pred_bool))
+ 
+cm = metrics.confusion_matrix(y_test1,y_pred_bool, )
+#score = metrics.accuracy_score(y_test,pred)
+# print(cm)
+df_cm = pd.DataFrame(
+    cm, index =lab,
+    columns = lab,
+)
+plt.figure(figsize = (6, 6))
+ax = sns.heatmap(df_cm, annot=True, square=True, cbar = True)
+bottom, top = ax.get_ylim()
+ax.set_ylim(bottom + 0.5, top - 0.5)
+ 
+plt.savefig(r"/content/drive/MyDrive/covid1/confusion_matrix.png")
+plt.show()
+#plt.savefig('/content/drive/MyDrive/projects/tb/inp_confusion_matrix.png')
+
+timgs = []
+#imgs = cv2.imread('/content/drive/MyDrive/Colab Notebooks/Covid19-dataset/train/Covid/COVID-00014.jpg')
+imgs = cv2.imread('/content/drive/MyDrive/Colab Notebooks/Covid19-dataset/train/Normal/092.jpeg')
+imgs = cv2.resize(imgs, (224, 224))
+timgs.append(imgs)
+
+timgs = np.array(timgs)
+timgs.shape
+
+lab = ['Covid', 'Normal']
+
+test_image = timgs/255
+#print("2", test_image.shape)
+
+arc = load_model(r'/content/drive/MyDrive/Colab Notebooks/vgg.h5')
+pred = arc.predict(test_image)
+pred.shape, pred
+
+lab = ['Covid', 'Normal']
+
+test_image = timgs/255
+#print("2", test_image.shape)
+
+arc = load_model(r'/content/drive/MyDrive/Colab Notebooks/vgg.h5')
+pred = arc.predict(test_image)
+pred.shape, pred
+
+plt.figure(figsize = (5,5))
+plt.barh(lab, pred[0], align='center', )
+plt.ylabel('Labels / Class')
+plt.xlabel('Prediction')
+plt.title('Labels')
+plt.show()
+
+
